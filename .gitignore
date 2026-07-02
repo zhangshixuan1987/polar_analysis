@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# NetCDF files (data files)
+*.nc
+**/*.nc
+
+# CSV files (data files)
+*.csv
+**/*.csv
+
+# PDF files (output figures)
+*.pdf
+**/*.pdf
+
+# PNG files (output figures)
+*.png
+**/*.png
+
+# Log files
+*.log
+**/*.log
+
+# HPC/PBS/Slurm output files
+*.o[0-9]*
+*.e[0-9]*
+*.pe[0-9]*
+*.po[0-9]*
