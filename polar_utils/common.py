@@ -11,6 +11,17 @@ from scipy import stats
 from scipy.signal import butter, filtfilt
 
 # ============================================================
+# Helper: open_dataset supporting glob/list of files
+# ============================================================
+def open_dataset(data):
+    if isinstance(data, str) and ("*" in data or "?" in data):
+        return xr.open_mfdataset(data)
+    elif isinstance(data, (list, tuple)):
+        return xr.open_mfdataset(data)
+    else:
+        return xr.open_dataset(data)
+
+# ============================================================
 # Case class
 # ============================================================
 class Case:

@@ -17,7 +17,8 @@ from polar_utils.common import (
     pearson_r_p_value,
     draw_regression_map,
     draw_regional_box,
-    plot_regions_mask
+    plot_regions_mask,
+    open_dataset
 )
 
 # ============================================================
@@ -312,7 +313,7 @@ def run_asl_index_generation(fig_path, out_path, mip, exp, relm, case_id, period
             
     print("working on ASL index generation for:", case, var)
     
-    ds = xr.open_dataset(data)
+    ds = open_dataset(data)
     ymds = '{}-{}-01'.format(period.split("-")[0][0:4], period.split("-")[0][4:6])
     ymde = '{}-{}-31'.format(period.split("-")[1][0:4], period.split("-")[1][4:6])
     ds = ds.sel(time=slice(ymds, ymde))
@@ -486,7 +487,7 @@ def run_asl_leadlag_analysis(fig_path, out_path, mip, exp, relm, case_id, period
         
     print("working on ASL lead-lag for:", case, var)
     
-    ds = xr.open_dataset(data)
+    ds = open_dataset(data)
     ymds = '{}-{}-01'.format(period.split("-")[0][0:4], period.split("-")[0][4:6])
     ymde = '{}-{}-31'.format(period.split("-")[1][0:4], period.split("-")[1][4:6])
     ds = ds.sel(time=slice(ymds, ymde))

@@ -14,7 +14,8 @@ from polar_utils.common import (
     slice_region,
     pearson_r_p_value,
     draw_regression_map,
-    draw_regional_box
+    draw_regional_box,
+    open_dataset
 )
 
 # ============================================================
@@ -27,7 +28,7 @@ def run_weather_regime_analysis(fig_path, out_path, mip, exp, relm, case_id, per
         data = case_dict[key].path
         
     print("working on Weather Regime analysis for:", case, var)
-    ds = xr.open_dataset(data)
+    ds = open_dataset(data)
     ymds = '{}-{}-01'.format(period.split("-")[0][0:4], period.split("-")[0][4:6])
     ymde = '{}-{}-31'.format(period.split("-")[1][0:4], period.split("-")[1][4:6])
     ds = ds.sel(time=slice(ymds, ymde))

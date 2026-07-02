@@ -5,7 +5,7 @@ import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
 
-from polar_utils.common import Case, low_pass, detrend_dim, slice_region, pearson_r_p_value, draw_regression_map
+from polar_utils.common import Case, low_pass, detrend_dim, slice_region, pearson_r_p_value, draw_regression_map, open_dataset
 
 # ============================================================
 # Regional Mean Climatology & Indices
@@ -109,7 +109,7 @@ def run_regional_mean_generation(fig_path, out_path, mip, exp, relm, period, cas
         data = case_dict[key].path
         
     print("working on regional mean generation for:", case, var)
-    ds = xr.open_dataset(data)
+    ds = open_dataset(data)
     ymds = '{}-{}-01'.format(period.split("-")[0][0:4], period.split("-")[0][4:6])
     ymde = '{}-{}-31'.format(period.split("-")[1][0:4], period.split("-")[1][4:6])
     ds = ds.sel(time=slice(ymds, ymde))
@@ -179,11 +179,11 @@ def run_mpas_regional_generation(fig_path, out_path, mip, exp, relm, period, cas
     if len(ftpl) > 1:
         for i, ff in enumerate(ftpl):
             if i == 0:
-                ds = xr.open_dataset(ff)
+                ds = open_dataset(ff)
             else:
-                ds = xr.merge([ds, xr.open_dataset(ff)], compat='override')
+                ds = xr.merge([ds, open_dataset(ff)], compat='override')
     else:
-        ds = xr.open_dataset(ftpl[0])
+        ds = open_dataset(ftpl[0])
 
     times = []
     for yy, mm in zip(ds['year'], ds['month']):
