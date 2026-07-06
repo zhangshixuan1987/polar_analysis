@@ -565,7 +565,7 @@ def main(parameter):
     return
 
 if __name__ == "__main__":
-  results_dir = "/lcrc/group/e3sm/ac.szhang/acme_scratch/e3sm_project/E3SMv21_testings/paper_material"
+  results_dir = "/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data"
   data_dir = os.path.join(results_dir,"fig_data","mov_analysis")
   fig_dir = os.path.join(results_dir,"2_mov_analysis","figure")
 

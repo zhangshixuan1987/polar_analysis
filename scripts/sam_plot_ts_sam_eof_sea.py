@@ -248,7 +248,7 @@ def plot_time_series(mode,sea,labels,period_hist,period_sspf,data,dflt,out_dir):
   return 
 
 if __name__ == "__main__":
-  results_dir = "/lcrc/group/e3sm/ac.szhang/acme_scratch/e3sm_project/E3SMv21_testings/paper_material"
+  results_dir = "/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data"
   data_dir = "/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/E3SMv2_1/pcmdi"
   ts_path = os.path.join(data_dir,"diagnostic_results","variability_modes")
   fig_dir = os.path.join(results_dir,"4_sam_analysis","sam_index_ts","figure")

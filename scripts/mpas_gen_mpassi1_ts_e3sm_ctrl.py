@@ -195,8 +195,8 @@ class Case:
 if __name__ == "__main__":
 
   top_path = "/lcrc/group/e3sm/ac.szhang/acme_scratch/e3sm_project"
-  out_path = os.path.join(top_path,"E3SMv21_testings","paper_material","fig_data","mpas_ts","raw_index")
-  fig_path = os.path.join(top_path,"E3SMv21_testings","paper_material","6_regional_analysis","mpas_regional","figure")
+  out_path = os.path.join("/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data","mpas_ts","raw_index")
+  fig_path = os.path.join("/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/figure", "regional_analysis","mpas_regional","figure")
 
   # region of interest
   region   = "iceShelfFluxes"

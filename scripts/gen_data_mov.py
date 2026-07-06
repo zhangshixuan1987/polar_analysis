@@ -272,7 +272,7 @@ if __name__ == "__main__":
   #if len(sys.argv) > 1:
   #  main(sys.argv[1])
 
-  results_dir = "/lcrc/group/e3sm/ac.szhang/acme_scratch/e3sm_project/E3SMv21_testings/paper_material"
+  results_dir = "/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data"
   data_dir = "/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/E3SMv2_1/pcmdi"
 
   parser = create_mov_plot_parser()

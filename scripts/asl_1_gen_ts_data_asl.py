@@ -134,7 +134,7 @@ def main(mips,exps,ver,seasons,indices,data_path,out_path):
     return
 
 if __name__ == "__main__":
-  data_dir = "/lcrc/group/e3sm/ac.szhang/acme_scratch/e3sm_project/E3SMv21_testings/paper_material"
+  data_dir = "/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data"
   data_path = os.path.join(data_dir,"fig_data","asl_analysis","raw_index")
   out_path = os.path.join(data_dir,"fig_data","asl_analysis","ts_index")
   mips = ["analysis","cmip6","e3sm"]

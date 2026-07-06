@@ -163,9 +163,9 @@ def plot_annual_cycle(metrics,metunit,relms,products,periods,data_dict,fig_dir):
   return 
 
 if __name__ == "__main__":
-  top_dir = "/lcrc/group/e3sm/ac.szhang/acme_scratch/e3sm_project/E3SMv21_testings/paper_material"
+  top_dir = "/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data"
   data_dir = os.path.join(top_dir,"fig_data","asl_analysis","raw_index")
-  fig_dir = os.path.join(top_dir,"3_asl_analysis","metrics_plot","figure")
+  fig_dir = os.path.join("/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/figure", "asl_analysis", "metrics_plot")
   
   mip = "e3sm" 
   ver = "asl_scotthoskingv3.PSL" 

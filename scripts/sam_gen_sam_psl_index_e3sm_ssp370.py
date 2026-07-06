@@ -632,8 +632,8 @@ class Case:
 if __name__ == "__main__":
 
   top_path = "/lcrc/group/e3sm/ac.szhang/acme_scratch/e3sm_project"
-  out_path = os.path.join(top_path,"E3SMv21_testings","paper_material","fig_data","sam_analysis","raw_index")
-  fig_path = os.path.join(top_path,"E3SMv21_testings","paper_material","4_sam_analysis","sam_index_ts","figure")
+  out_path = os.path.join("/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data","sam_analysis","raw_index")
+  fig_path = os.path.join("/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/figure", "sam_analysis","sam_index_ts","figure")
 
   # region of interest (sam sector)
   sam_region   = {'west':-180., 'east':180., 'south':-90., 'north':-20.}

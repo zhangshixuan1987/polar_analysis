@@ -223,10 +223,10 @@ def plot_time_series(mode,met,unt,sea,labels,period_hist,period_sspf,data,dflt,o
   return 
 
 if __name__ == "__main__":
-  results_dir = "/lcrc/group/e3sm/ac.szhang/acme_scratch/e3sm_project/E3SMv21_testings/paper_material"
-  data_dir = "/lcrc/group/e3sm/ac.szhang/acme_scratch/e3sm_project/E3SMv21_testings/paper_material"
+  results_dir = "/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data"
+  data_dir = "/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data"
   ts_path = os.path.join(data_dir,"fig_data","asl_analysis","ts_index")
-  fig_dir = os.path.join(results_dir,"3_asl_analysis","asl_index_ts","figure")
+  fig_dir = os.path.join("/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/figure", "asl_analysis", "asl_index_ts")
   
   exps = ["v2_1-SORRM.0701", "v2_1-SORRM.0751","v2_1-SORRM.0801","v2_1-SORRM-FISMF.0701"]
   seas = ["Monthly"]
@@ -237,6 +237,6 @@ if __name__ == "__main__":
   metunit = ['degree','degree','hPa','hPa','hPa']
   period_hist = "1950-2014"
   period_sspf = "2015-2100"
-  out_dir = os.path.join(results_dir,"3_asl_analysis","time_series")
+  out_dir = os.path.join("/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data", "asl_analysis", "time_series")
   main(mode,metrics,metunit,exps,seas,dir_hist,dir_sspf,period_hist,period_sspf,fig_dir)
 

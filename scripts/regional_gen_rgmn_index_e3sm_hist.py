@@ -649,8 +649,8 @@ class Case:
 if __name__ == "__main__":
 
   top_path = "/lcrc/group/e3sm/ac.szhang/acme_scratch/e3sm_project"
-  out_path = os.path.join(top_path,"E3SMv21_testings","paper_material","fig_data","rgmn_analysis","raw_index")
-  fig_path = os.path.join(top_path,"E3SMv21_testings","paper_material","6_regional_analysis","regional_mean_ts","figure")
+  out_path = os.path.join("/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data","rgmn_analysis","raw_index")
+  fig_path = os.path.join("/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/figure", "regional_analysis","regional_mean_ts","figure")
 
   # region of interest (rgmn sector)
   regions  = {'nino':   {'west':-170., 'east':-120.,  'south':-5.,  'north':5.},    

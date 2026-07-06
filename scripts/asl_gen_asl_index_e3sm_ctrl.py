@@ -665,8 +665,8 @@ class Case:
 if __name__ == "__main__":
 
   top_path = "/lcrc/group/e3sm/ac.szhang/acme_scratch/e3sm_project"
-  out_path = os.path.join(top_path,"E3SMv21_testings","paper_material","fig_data","asl_analysis","raw_index")
-  fig_path = os.path.join(top_path,"E3SMv21_testings","paper_material","3_asl_analysis","asl_index_ts","figure")
+  out_path = os.path.join("/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data","asl_analysis","raw_index")
+  fig_path = os.path.join("/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/figure", "asl_analysis","asl_index_ts","figure")
 
   # region of interest (asl sector)
   asl_region   = {'west':170., 'east':298., 'south':-80., 'north':-60.}

@@ -144,7 +144,7 @@ def main(obs_sets,obs_mips,test_mips,test_exps,periods,seasons,indices,data_path
     return
 
 if __name__ == "__main__":
-  data_dir = "/lcrc/group/e3sm/ac.szhang/acme_scratch/e3sm_project/E3SMv21_testings/paper_material"
+  data_dir = "/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data"
   data_path = os.path.join(data_dir,"fig_data","asl_analysis","ts_index")
   out_path  = os.path.join(data_dir,"fig_data","asl_analysis","clim_index")
   obs_sets  = ['NOAA_20C.en00','ERA5.en00']

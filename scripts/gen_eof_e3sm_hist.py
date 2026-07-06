@@ -1132,8 +1132,8 @@ class Case:
 if __name__ == "__main__":
 
   top_path = "/lcrc/group/e3sm/ac.szhang/acme_scratch/e3sm_project"
-  out_path = os.path.join(top_path,"E3SMv21_testings","paper_material","fig_data","eof_analysis","raw_index")
-  fig_path = os.path.join(top_path,"E3SMv21_testings","paper_material","7_eof_analysis","figure")
+  out_path = os.path.join("/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/data","eof_analysis","raw_index")
+  fig_path = os.path.join("/lcrc/group/e3sm/public_html/diagnostic_output/ac.szhang/polar_analysis/figure", "eof_analysis","figure")
 
   # region of interest (eof sector)
   eof_region = {'socn':{'west':0., 'east':360., 'south':-90., 'north':-40.}}
