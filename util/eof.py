@@ -6,7 +6,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 from scipy.linalg import svd
 
-from polar_utils.common import (
+from .common import (
     Case,
     low_pass,
     detrend_dim,

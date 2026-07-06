@@ -6,7 +6,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
 
-from polar_utils.common import (
+from .common import (
     Case,
     low_pass,
     detrend_dim,
@@ -16,7 +16,7 @@ from polar_utils.common import (
     draw_regional_box,
     open_dataset
 )
-from polar_utils.eof import eofunc_eofs_svd, eofunc_pcs_svd
+from .eof import eofunc_eofs_svd, eofunc_pcs_svd
 
 # ============================================================
 # Core Trend Analysis

@@ -7,7 +7,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 
-from polar_utils.common import (
+from .common import (
     Case,
     low_pass,
     detrend_dim,

@@ -8,8 +8,10 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from skimage.feature import peak_local_max
 import regionmask
+import dask
 
-from polar_utils.common import (
+
+from .common import (
     Case,
     low_pass,
     detrend_dim,
@@ -20,6 +22,27 @@ from polar_utils.common import (
     plot_regions_mask,
     open_dataset
 )
+
+# ============================================================
+# Helper: Get variable case-insensitively from dataset
+# ============================================================
+def get_variable_case_insensitive(ds, var):
+    if var in ds:
+        return ds[var], var
+    if var.swapcase() in ds:
+        return ds[var.swapcase()], var.swapcase()
+    for k in ds.variables.keys():
+        if k.lower() == var.lower():
+            return ds[k], k
+    return ds[var], var
+
+# ============================================================
+# Helper: get_lows wrapper for Dask delayed to avoid graph warning
+# ============================================================
+def get_lows_wrapper(da_sliced_val, t, asl_region, min_dist, num_peak, exclue_border):
+    da_t = da_sliced_val.isel(time=t)
+    return get_lows(da_t, asl_region, min_dist, num_peak, exclue_border)
+
 
 # ============================================================
 # ASL sector mean
@@ -259,9 +282,10 @@ def draw_asl_map(out_path, fig_path, da, asl_df, colnams, asl_region, mip, exp, 
         ranm[:, :, :] = low_pass(1.0 / 5.0, anm[:, :, :], axis=0)
     rdanm = detrend_dim(ranm, 'time', 1)
     
-    vcor = xr.corr(raslSD, rdanm, dim="time")
-    vreg = xr.cov(raslSD, rdanm, dim="time") / raslSD.var(dim='time', skipna=True).values
-    pval = pearson_r_p_value(raslSD, rdanm, dim="time")
+    with dask.config.set(scheduler='synchronous'):
+        vcor = xr.corr(raslSD, rdanm, dim="time").compute()
+        vreg = (xr.cov(raslSD, rdanm, dim="time") / raslSD.var(dim='time', skipna=True)).compute()
+        pval = pearson_r_p_value(raslSD, rdanm, dim="time").compute()
     
     vsig = vreg.copy()
     vsig = vsig.where(pval <= 0.05)
@@ -342,7 +366,7 @@ def run_asl_index_generation(fig_path, out_path, mip, exp, relm, case_id, period
         mask = (~np.isnan(mask_da.values)).astype(float)
         mask = xr.DataArray(mask, coords=[ds.latitude, ds.longitude], dims=['latitude', 'longitude'])
         
-    da = ds[var]
+    da, var = get_variable_case_insensitive(ds, var)
     if da.units == "Pa":
         da = da / 100.
         da = da.assign_attrs(units='hPa')
@@ -358,14 +382,36 @@ def run_asl_index_generation(fig_path, out_path, mip, exp, relm, case_id, period
         
     times = da.time.dt.strftime("%Y-%m-%d")
     ntime = len(times)
-    all_lows_dfs = pd.DataFrame()
+    
     print("number of total months in data: ", ntime)
+    
+    # Preload/compute the sliced masked region into memory using Dask
+    print("Pre-loading sliced regional data...")
+    da_sliced = da.where(mask == 0)
+    da_sliced = slice_region(da_sliced, asl_region)
+    da_sliced = da_sliced.compute()
+    
+    # Check if a Dask Client is active to scatter the data and avoid large graph warnings
+    try:
+        from dask.distributed import get_client
+        c = get_client()
+        da_sliced_ref = c.scatter([da_sliced])[0]
+        print("Dask client detected. Scattered sliced data to workers.")
+    except (ValueError, ImportError):
+        da_sliced_ref = da_sliced
+        
+    # Compute in parallel using dask.delayed
+    print("Submitting delayed tasks to Dask...")
+    delayed_get_lows = dask.delayed(get_lows_wrapper)
+    tasks = []
     for t in range(ntime):
-        da_t = da.isel(time=t)
-        da_mask2 = da_t.where(mask == 0)
-        da_mask2 = slice_region(da_mask2, asl_region)
-        all_lows_df = get_lows(da_mask2, asl_region, asl_min_dist, asl_num_peak, asl_exc_bord)
-        all_lows_dfs = pd.concat([all_lows_dfs, all_lows_df], ignore_index=True)
+        task = delayed_get_lows(da_sliced_ref, t, asl_region, asl_min_dist, asl_num_peak, asl_exc_bord)
+        tasks.append(task)
+        
+    print("Running parallel computation...")
+    dfs = dask.compute(*tasks)
+    all_lows_dfs = pd.concat(dfs, ignore_index=True)
+
         
     asl_df, colnams = define_asl(times, all_lows_dfs, asl_region, l_allow_no_asl, mip, exp, relm, case, case_id, period, vstr, out_path)
     
@@ -419,13 +465,14 @@ def asl_lead_lag_anl(mip, exp, relm, case, case_id, period, out_path, fig_path, 
     corll = []
     regll = []
     pvlll = []
-    for tllg in leadlag:
-        cor = xr.corr(raslSD, rdanm.shift(time=tllg), dim="time")
-        reg = xr.cov(raslSD, rdanm.shift(time=tllg), dim="time") / raslSD.var(dim='time', skipna=True).values
-        pvl = pearson_r_p_value(raslSD, rdanm.shift(time=tllg), dim="time")
-        corll.append(cor)
-        regll.append(reg)
-        pvlll.append(pvl)
+    with dask.config.set(scheduler='synchronous'):
+        for tllg in leadlag:
+            cor = xr.corr(raslSD, rdanm.shift(time=tllg), dim="time").compute()
+            reg = (xr.cov(raslSD, rdanm.shift(time=tllg), dim="time") / raslSD.var(dim='time', skipna=True)).compute()
+            pvl = pearson_r_p_value(raslSD, rdanm.shift(time=tllg), dim="time").compute()
+            corll.append(cor)
+            regll.append(reg)
+            pvlll.append(pvl)
         
     save_leadlag_nc(corll, regll, pvlll, leadlag, mip, exp, relm, case, case_id, period, var, vunt, reg_idx, out_path)
     
@@ -497,7 +544,7 @@ def run_asl_leadlag_analysis(fig_path, out_path, mip, exp, relm, case_id, period
     if lat_name and lon_name and (lat_name == 'lat' or lon_name == 'lon'):
         ds = ds.rename({lat_name: 'latitude', lon_name: 'longitude'})
         
-    da = ds[var]
+    da, var = get_variable_case_insensitive(ds, var)
     if da.units == "Pa":
         da = da / 100.
         da = da.assign_attrs(units='hPa')

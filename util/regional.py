@@ -5,7 +5,7 @@ import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
 
-from polar_utils.common import Case, low_pass, detrend_dim, slice_region, pearson_r_p_value, draw_regression_map, open_dataset
+from .common import Case, low_pass, detrend_dim, slice_region, pearson_r_p_value, draw_regression_map, open_dataset
 
 # ============================================================
 # Regional Mean Climatology & Indices

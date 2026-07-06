@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
-from polar_utils.common import (
+from .common import (
     Case,
     low_pass,
     detrend_dim,
