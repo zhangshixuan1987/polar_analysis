@@ -591,10 +591,11 @@ def load_and_process_data_step1(file_dict, seasons, indices, out_path):
                 for relm in file_dict[mip][exp][prod].keys():
                     csvObj = file_dict[mip][exp][prod][relm]
                     data = pd.read_csv(csvObj)
-                    data = data.reset_index(names=['year'])
-                    data['year'] = pd.DatetimeIndex(data['time']).year
-                    data['month'] = pd.DatetimeIndex(data['time']).month
-                    data['day'] = pd.DatetimeIndex(data['time']).day
+                    # Parse dates via string splitting to handle year < 1678 without OutOfBoundsDatetime
+                    time_strs = data['time'].astype(str)
+                    data['year'] = time_strs.apply(lambda x: int(x.split('-')[0]))
+                    data['month'] = time_strs.apply(lambda x: int(x.split('-')[1]))
+                    data['day'] = time_strs.apply(lambda x: int(x.split('-')[2].split()[0]))
                     data = data.drop(columns=['time'])
                     for sea in seasons: 
                         print("processing seasonal climatology step 1:", mip, exp, prod, relm, sea)  
