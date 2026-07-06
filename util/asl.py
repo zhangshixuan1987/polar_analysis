@@ -326,6 +326,8 @@ def draw_asl_map(out_path, fig_path, da, asl_df, colnams, asl_region, mip, exp, 
 # ============================================================
 def run_asl_index_generation(fig_path, out_path, mip, exp, relm, case_id, period, case_dict, asl_region, 
                              asl_min_dist, asl_num_peak, asl_exc_bord, l_check_asl_region, l_allow_no_asl):
+    dmsk = ""
+    vmsk = ""
     for key in case_dict:
         if key == "mask":
             dmsk = case_dict[key].path
