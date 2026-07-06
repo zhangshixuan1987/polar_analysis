@@ -705,9 +705,27 @@ def process_mean_climatology(ref_data, test_data, indices, sea, period):
     if sea in ['AC']: 
         x = x1.groupby(by=['month'], dropna=True).mean() 
         y = y1.groupby(by=['month'], dropna=True).mean()
+        x = x.reset_index()
+        y = y.reset_index()
     else:
-        x = x1
-        y = y1 
+        x = x1.copy()
+        y = y1.copy() 
+
+    # Align ref and test datasets to have matching years/months before comparison
+    if 'year' in x.columns and 'month' in x.columns and 'year' in y.columns and 'month' in y.columns:
+        x_keys = x['year'].astype(str) + '-' + x['month'].astype(str)
+        y_keys = y['year'].astype(str) + '-' + y['month'].astype(str)
+        common_keys = np.intersect1d(x_keys.values, y_keys.values)
+        x = x[x_keys.isin(common_keys)].sort_values(by=['year', 'month']).reset_index(drop=True)
+        y = y[y_keys.isin(common_keys)].sort_values(by=['year', 'month']).reset_index(drop=True)
+    elif 'year' in x.columns and 'year' in y.columns:
+        common_years = np.intersect1d(x['year'].values, y['year'].values)
+        x = x[x['year'].isin(common_years)].sort_values(by='year').reset_index(drop=True)
+        y = y[y['year'].isin(common_years)].sort_values(by='year').reset_index(drop=True)
+    elif 'month' in x.columns and 'month' in y.columns:
+        common_months = np.intersect1d(x['month'].values, y['month'].values)
+        x = x[x['month'].isin(common_months)].sort_values(by='month').reset_index(drop=True)
+        y = y[y['month'].isin(common_months)].sort_values(by='month').reset_index(drop=True)
 
     for var in indices: 
         x0 = x[var].to_numpy().astype(np.float32)
