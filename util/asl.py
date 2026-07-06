@@ -557,12 +557,11 @@ def run_asl_leadlag_analysis(fig_path, out_path, mip, exp, relm, case_id, period
     asl_exist = False
     for col in asl_df.columns:
         if reg_idx in col:
-            asl = asl_df[col].to_xarray()
+            asl = xr.DataArray(asl_df[col].values, coords={"time": da.time}, dims=["time"])
             asl_exist = True
     if not asl_exist:
         raise ValueError('Index {} not exist, please check....'.format(reg_idx))
         
-    asl = asl.assign_coords({"time": da.time})
     asl_lead_lag_anl(mip, exp, relm, case, case_id, period, out_path, fig_path, da, asl, reg_idx, da.time, var)
 
 # ============================================================
