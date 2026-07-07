@@ -15,9 +15,9 @@ from scipy.signal import butter, filtfilt
 # ============================================================
 def open_dataset(data):
     if isinstance(data, str) and ("*" in data or "?" in data):
-        return xr.open_mfdataset(data)
+        return xr.open_mfdataset(data, data_vars="all")
     elif isinstance(data, (list, tuple)):
-        return xr.open_mfdataset(data)
+        return xr.open_mfdataset(data, data_vars="all")
     else:
         return xr.open_dataset(data)
 

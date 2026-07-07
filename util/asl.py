@@ -1,6 +1,8 @@
 import os
 import glob
 import collections
+import calendar as calendar_lib
+import datetime as dt
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -35,6 +37,169 @@ def get_variable_case_insensitive(ds, var):
         if k.lower() == var.lower():
             return ds[k], k
     return ds[var], var
+
+# ============================================================
+# Helper: monthly period bounds
+# ============================================================
+def get_monthly_time_bounds(period):
+    """Return broad time bounds for monthly data labeled at month end."""
+    start_year, start_month, end_year, end_month = parse_monthly_period(period)
+
+    if end_month == 12:
+        next_year = end_year + 1
+        next_month = 1
+    else:
+        next_year = end_year
+        next_month = end_month + 1
+
+    start = f"{start_year:04d}-{start_month:02d}-01"
+    end = f"{next_year:04d}-{next_month:02d}-01"
+    return start, end
+
+
+def parse_monthly_period(period):
+    start_ym, end_ym = period.split("-")
+    start_year = int(start_ym[0:4])
+    start_month = int(start_ym[4:6])
+    end_year = int(end_ym[0:4])
+    end_month = int(end_ym[4:6])
+    return start_year, start_month, end_year, end_month
+
+
+def get_expected_month_count(period):
+    start_year, start_month, end_year, end_month = parse_monthly_period(period)
+    return (end_year - start_year) * 12 + end_month - start_month + 1
+
+
+def get_cftime_class(calendar):
+    import cftime
+
+    calendar_classes = {
+        "noleap": cftime.DatetimeNoLeap,
+        "365_day": cftime.DatetimeNoLeap,
+        "360_day": cftime.Datetime360Day,
+        "all_leap": cftime.DatetimeAllLeap,
+        "366_day": cftime.DatetimeAllLeap,
+        "julian": cftime.DatetimeJulian,
+        "gregorian": cftime.DatetimeGregorian,
+        "standard": cftime.DatetimeGregorian,
+        "proleptic_gregorian": cftime.DatetimeProlepticGregorian,
+    }
+    return calendar_classes.get(calendar, cftime.DatetimeNoLeap)
+
+
+def get_month_length(year, month, calendar):
+    if calendar in ("360_day",):
+        return 30
+
+    if calendar in ("noleap", "365_day"):
+        return 28 if month == 2 else calendar_lib.monthrange(2001, month)[1]
+
+    if calendar in ("all_leap", "366_day"):
+        return 29 if month == 2 else calendar_lib.monthrange(2001, month)[1]
+
+    if calendar in ("julian",):
+        is_leap = year % 4 == 0
+        return 29 if month == 2 and is_leap else calendar_lib.monthrange(2001, month)[1]
+
+    if calendar in ("gregorian", "standard", "proleptic_gregorian"):
+        is_leap = calendar_lib.isleap(year)
+        return 29 if month == 2 and is_leap else calendar_lib.monthrange(2001, month)[1]
+
+    return 28 if month == 2 else calendar_lib.monthrange(2001, month)[1]
+
+
+def iter_months(start_year, start_month, count):
+    year = start_year
+    month = start_month
+
+    for _ in range(count):
+        yield year, month
+        month += 1
+
+        if month == 13:
+            year += 1
+            month = 1
+
+
+def get_month_midpoint(year, month, calendar):
+    month_length = get_month_length(year, month, calendar)
+    midpoint_offset = dt.timedelta(days=month_length / 2.0)
+
+    if 1678 <= year <= 2261:
+        return pd.Timestamp(year=year, month=month, day=1) + pd.Timedelta(midpoint_offset)
+
+    date_class = get_cftime_class(calendar)
+    return date_class(year, month, 1) + midpoint_offset
+
+
+def get_monthly_time_coordinate(period, calendar="noleap"):
+    start_year, start_month, _, _ = parse_monthly_period(period)
+    expected_months = get_expected_month_count(period)
+
+    if 1678 <= start_year <= 2261:
+        return pd.DatetimeIndex(
+            [
+                get_month_midpoint(year, month, calendar)
+                for year, month in iter_months(start_year, start_month, expected_months)
+            ]
+        )
+
+    try:
+        get_cftime_class(calendar)
+    except ImportError as exc:
+        raise ImportError(
+            "cftime is required to normalize monthly coordinates for "
+            f"periods outside pandas' supported datetime range: {period}"
+        ) from exc
+
+    return xr.CFTimeIndex(
+        [
+            get_month_midpoint(year, month, calendar)
+            for year, month in iter_months(start_year, start_month, expected_months)
+        ]
+    )
+
+
+def select_monthly_period(ds, period, normalize_time=True, label="dataset"):
+    """
+    Select a monthly period and normalize timestamps to month middle.
+
+    Some model files label monthly means at the end boundary of the
+    averaging interval. The broad slice includes those boundary labels,
+    then the exact requested month count is enforced and the coordinate is
+    rewritten to each calendar month's midpoint for later comparisons.
+    """
+    start, end = get_monthly_time_bounds(period)
+    ds = ds.sel(time=slice(start, end))
+    expected_months = get_expected_month_count(period)
+    original_first_time = str(ds.time.values[0]) if "time" in ds.dims and ds.sizes["time"] else "none"
+    original_last_time = str(ds.time.values[-1]) if "time" in ds.dims and ds.sizes["time"] else "none"
+
+    if "time" in ds.dims and ds.sizes["time"] > expected_months:
+        ds = ds.isel(time=slice(0, expected_months))
+
+    if "time" in ds.dims and ds.sizes["time"] != expected_months:
+        first_time = str(ds.time.values[0]) if ds.sizes["time"] else "none"
+        last_time = str(ds.time.values[-1]) if ds.sizes["time"] else "none"
+        raise ValueError(
+            f"Expected {expected_months} monthly time steps for period {period}, "
+            f"but found {ds.sizes['time']} after slicing {start} to {end}. "
+            f"First time: {first_time}; last time: {last_time}"
+        )
+
+    if normalize_time and "time" in ds.dims:
+        calendar = ds.time.encoding.get("calendar", ds.time.attrs.get("calendar", "noleap"))
+        ds = ds.assign_coords(time=get_monthly_time_coordinate(period, calendar=calendar))
+        print(
+            "Time coordinate check for "
+            f"{label}: requested period={period}, calendar={calendar}, "
+            f"selected raw range={original_first_time} to {original_last_time}, "
+            f"normalized midpoint range={ds.time.values[0]} to {ds.time.values[-1]}, "
+            f"months={ds.sizes['time']}. Please confirm this matches your analysis."
+        )
+
+    return ds
 
 # ============================================================
 # Helper: get_lows wrapper for Dask delayed to avoid graph warning
@@ -340,9 +505,7 @@ def run_asl_index_generation(fig_path, out_path, mip, exp, relm, case_id, period
     print("working on ASL index generation for:", case, var)
     
     ds = open_dataset(data)
-    ymds = '{}-{}-01'.format(period.split("-")[0][0:4], period.split("-")[0][4:6])
-    ymde = '{}-{}-31'.format(period.split("-")[1][0:4], period.split("-")[1][4:6])
-    ds = ds.sel(time=slice(ymds, ymde))
+    ds = select_monthly_period(ds, period, label=f"{mip}.{exp}.{case}.{relm}.{case_id}")
     
     lat_name = 'latitude' if 'latitude' in ds.dims else ('lat' if 'lat' in ds.dims else None)
     lon_name = 'longitude' if 'longitude' in ds.dims else ('lon' if 'lon' in ds.dims else None)
@@ -537,9 +700,7 @@ def run_asl_leadlag_analysis(fig_path, out_path, mip, exp, relm, case_id, period
     print("working on ASL lead-lag for:", case, var)
     
     ds = open_dataset(data)
-    ymds = '{}-{}-01'.format(period.split("-")[0][0:4], period.split("-")[0][4:6])
-    ymde = '{}-{}-31'.format(period.split("-")[1][0:4], period.split("-")[1][4:6])
-    ds = ds.sel(time=slice(ymds, ymde))
+    ds = select_monthly_period(ds, period, label=f"{mip}.{exp}.{case}.{relm}.{case_id}")
     
     lat_name = 'latitude' if 'latitude' in ds.dims else ('lat' if 'lat' in ds.dims else None)
     lon_name = 'longitude' if 'longitude' in ds.dims else ('lon' if 'lon' in ds.dims else None)
@@ -552,7 +713,7 @@ def run_asl_leadlag_analysis(fig_path, out_path, mip, exp, relm, case_id, period
         da = da.assign_attrs(units='hPa')
         
     asl_index_file = os.path.join(out_path.replace("lead_lag", "raw_index"), 
-                                  "{}.{}.{}.{}.{}.{}.{}.csv".format(mip, exp, case, relm, case_id, "PSL", period))
+                                  "{}.{}.{}.{}.{}.{}.{}.csv".format(mip, exp, case, relm, case_id, var, period))
     asl_df = pd.read_csv(asl_index_file)
     asl_exist = False
     for col in asl_df.columns:
@@ -583,7 +744,7 @@ def load_metric_file_list_step1(path, mip, exp, ver):
                 file_dict[product][relm] = ff 
     return file_dict 
 
-def load_and_process_data_step1(file_dict, seasons, indices, out_path):
+def load_and_process_data_step1(file_dict, seasons, indices, out_path, force_recompute=True, print_skip=True):
     for mip in file_dict.keys(): 
         for exp in file_dict[mip].keys():
             for prod in file_dict[mip][exp].keys():
@@ -627,6 +788,10 @@ def load_and_process_data_step1(file_dict, seasons, indices, out_path):
                         out_file = 'ASL.index.{}.{}.{}.{}.csv'.format(prod, relm, sea, period)
                         out_file = os.path.join(out_dir, out_file) 
                         if os.path.exists(out_file):
+                            if not force_recompute:
+                                if print_skip:
+                                    print("Skip existing seasonal climatology step 1:", out_file)
+                                continue
                             os.remove(out_file)
                             
                         if sea in ['Monthly']:
@@ -650,7 +815,7 @@ def load_and_process_data_step1(file_dict, seasons, indices, out_path):
                             outdata.insert(0, "month", month) 
                             outdata.to_csv(out_file, index=False) 
 
-def run_asl_index_clim_step1(mips, exps, ver, seasons, indices, data_path, out_path):
+def run_asl_index_clim_step1(mips, exps, ver, seasons, indices, data_path, out_path, force_recompute=True, print_skip=True):
     file_dict = {}
     for mip in mips: 
         for exp in exps: 
@@ -660,7 +825,7 @@ def run_asl_index_clim_step1(mips, exps, ver, seasons, indices, data_path, out_p
                 file_dict[mip][exp] = {}
             file_dict[mip][exp] = load_metric_file_list_step1(data_path, mip, exp, ver)
              
-    load_and_process_data_step1(file_dict, seasons, indices, out_path)
+    load_and_process_data_step1(file_dict, seasons, indices, out_path, force_recompute=force_recompute, print_skip=print_skip)
 
 # ============================================================
 # ASL Climatology Index calculation (Step 2)
@@ -726,6 +891,17 @@ def process_mean_climatology(ref_data, test_data, indices, sea, period):
         x = x[x['month'].isin(common_months)].sort_values(by='month').reset_index(drop=True)
         y = y[y['month'].isin(common_months)].sort_values(by='month').reset_index(drop=True)
 
+    if len(x) == 0 or len(y) == 0:
+        for var in indices:
+            metric_lib['mean'][var] = np.nan
+            metric_lib['mean_obs'][var] = np.nan
+            metric_lib['std'][var] = np.nan
+            metric_lib['std_obs'][var] = np.nan
+            metric_lib['bias'][var] = np.nan
+            metric_lib['std_xyt'][var] = np.nan
+            metric_lib['rms_xyt'][var] = np.nan
+        return metric_lib
+
     for var in indices: 
         x0 = x[var].to_numpy().astype(np.float32)
         y0 = y[var].to_numpy().astype(np.float32)
@@ -741,7 +917,23 @@ def process_mean_climatology(ref_data, test_data, indices, sea, period):
         
     return metric_lib
 
-def run_asl_index_clim_step2(obs_sets, obs_mips, test_mips, test_exps, periods, seasons, indices, data_path, out_path):
+def output_has_model_runs(path, expected_model_runs):
+    if not os.path.exists(path):
+        return False
+
+    if not expected_model_runs:
+        return True
+
+    data = pd.read_csv(path, index_col=False)
+    if 'model_run' not in data.columns:
+        return False
+
+    existing_model_runs = set(data['model_run'].astype(str))
+    return set(expected_model_runs).issubset(existing_model_runs)
+
+def run_asl_index_clim_step2(obs_sets, obs_mips, test_mips, test_exps, periods, seasons, indices, data_path, out_path, force_recompute=True):
+    metrics = ['mean', 'mean_obs', 'std', 'std_obs', 'bias', 'std_xyt', 'rms_xyt']
+
     for ii, obs in enumerate(obs_sets): 
         for sea in seasons: 
             if sea == "AC":
@@ -757,27 +949,54 @@ def run_asl_index_clim_step2(obs_sets, obs_mips, test_mips, test_exps, periods, 
             out_lib = {}
             period = periods[ii]
             ref_data = pd.read_csv(ofils[0], index_col=False)
+            test_files_by_key = {}
+            expected_model_runs = []
+
             for mip in test_mips:
                 for exp in test_exps:
                     test_file = load_metric_file_list_step2(data_path, mip, exp, season_tag)
                     for prod in test_file.keys():
                         for relm in test_file[prod].keys():
-                            test_data = pd.read_csv(test_file[prod][relm], index_col=False) 
-                            metric_lib = process_mean_climatology(ref_data, test_data, indices, sea, period)
-                            for metric in metric_lib.keys():
-                                dtmp = [mip, exp, prod, relm, '{}_{}'.format(prod, relm)]
-                                title = ['mip', 'exp', 'model', 'run', 'model_run']
-                                for var in metric_lib[metric].keys():
-                                    title.append(var)  
-                                    dtmp.append(metric_lib[metric][var])
-                                if metric not in out_lib.keys():
-                                    out_lib[metric] = pd.DataFrame([dtmp], columns=title)
-                                else:
-                                    out_lib[metric] = pd.concat([out_lib[metric], pd.DataFrame([dtmp], columns=title)], ignore_index=True)
-                                    
+                            model_run = '{}_{}'.format(prod, relm)
+                            expected_model_runs.append(model_run)
+                            test_files_by_key[(mip, exp, prod, relm)] = test_file[prod][relm]
+
             out_dir = os.path.join(out_path, obs)
             if not os.path.exists(out_dir):
                 os.makedirs(out_dir)
+
+            if not force_recompute:
+                complete_outputs = True
+                for metric in metrics:
+                    out_file = os.path.join(out_dir, 'ASL.{}.clim.{}.{}.csv'.format(metric, sea, period))
+                    if not output_has_model_runs(out_file, expected_model_runs):
+                        complete_outputs = False
+                        break
+
+                if complete_outputs:
+                    print(
+                        "Skip existing complete climatology step 2: "
+                        f"{obs} {sea} {period}"
+                    )
+                    continue
+
+            for (mip, exp, prod, relm), test_path in test_files_by_key.items():
+                test_data = pd.read_csv(test_path, index_col=False)
+                metric_lib = process_mean_climatology(ref_data, test_data, indices, sea, period)
+                for metric in metric_lib.keys():
+                    dtmp = [mip, exp, prod, relm, '{}_{}'.format(prod, relm)]
+                    title = ['mip', 'exp', 'model', 'run', 'model_run']
+                    for var in metric_lib[metric].keys():
+                        title.append(var)
+                        dtmp.append(metric_lib[metric][var])
+                    if metric not in out_lib.keys():
+                        out_lib[metric] = pd.DataFrame([dtmp], columns=title)
+                    else:
+                        out_lib[metric] = pd.concat(
+                            [out_lib[metric], pd.DataFrame([dtmp], columns=title)],
+                            ignore_index=True,
+                        )
+                                    
             for metric in out_lib.keys():
                 out_file = 'ASL.{}.clim.{}.{}.csv'.format(metric, sea, period)
                 out_file = os.path.join(out_dir, out_file)
